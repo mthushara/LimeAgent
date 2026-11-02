@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NIC &amp; Signature Verification</title>
+<style>
+  :root {
+    --bg: #f3f5f8; --card: #ffffff; --text: #1b2430; --muted: #5d6b7c; --line: #dde3ea; --soft: #f7f9fb;
+    --brand: #1f4e8c; --brand-soft: #e8eef7;
+    --ok: #157f3b; --ok-bg: #e6f4ea; --warn: #9a6200; --warn-bg: #fdf3dc;
+    --bad: #b42318; --bad-bg: #fdecea; --err: #4a5565; --err-bg: #eceff3;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--text); font: 15px/1.5 "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; }
+  button, input, select { font: inherit; color: inherit; }
+
+  /* ---------- header ---------- */
+  header { background: var(--card); border-bottom: 1px solid var(--line); }
+  .bar { max-width: 1080px; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .logo { width: 34px; height: 34px; border-radius: 8px; background: var(--brand); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 13px; }
+  .title { font-weight: 650; font-size: 16px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+  .chip { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--err-bg); color: var(--err); white-space: nowrap; }
+  .chip.on { background: var(--ok-bg); color: var(--ok); }
+  .chip.off { background: var(--warn-bg); color: var(--warn); }
+  .user { font-size: 13px; color: var(--muted); display: flex; gap: 10px; align-items: center; }
+  .user a { color: var(--brand); text-decoration: none; font-weight: 600; }
+
+  /* ---------- tabs ---------- */
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 18px 16px 48px; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+  .tab { border: 0; background: none; padding: 10px 16px; cursor: pointer; font-weight: 600; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -1px; }
+  .tab[aria-selected="true"] { color: var(--brand); border-bottom-color: var(--brand); }
+  .panel[hidden] { display: none; }
+
+  /* ---------- layout ---------- */
+  .grid { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 18px; align-items: start; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+  .card h2 { font-size: 15px; margin: 0 0 12px; }
+  label.f { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 5px; }
+  label.f .opt { font-weight: 400; color: var(--muted); }
+  input[type=text], input[type=tel] { width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+  input:focus { outline: 2px solid rgba(31, 78, 140, .2); border-color: var(--brand); }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  .seg { display: grid; gap: 6px; margin-top: 4px; }
+  .seg label { display: flex; gap: 9px; align-items: flex-start; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-size: 14px; }
+  .seg label:has(input:checked) { border-color: var(--brand); background: var(--brand-soft); }
+  .seg input { margin-top: 3px; accent-color: var(--brand); }
+  .seg small { display: block; color: var(--muted); font-size: 12px; }
+  .seg.row { grid-template-columns: repeat(3, 1fr); }
+  .seg.row label { justify-content: center; text-align: center; padding: 8px 6px; }
+  .seg.row input { display: none; }
+
+  .drop { margin-top: 12px; border: 1.5px dashed var(--line); border-radius: 10px; padding: 14px; text-align: center; background: var(--soft); }
+  .drop input[type=file] { max-width: 100%; }
+  .preview { margin-top: 10px; max-width: 100%; max-height: 220px; border-radius: 8px; border: 1px solid var(--line); display: block; margin-inline: auto; background: #fff; }
+
+  .cam { margin-top: 12px; }
+  .cam video, .cam img { width: 100%; border-radius: 10px; background: #111; display: block; max-height: 320px; object-fit: contain; }
+  .cam img { background: #fff; border: 1px solid var(--line); }
+  .row-btns { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+
+  .pad-wrap { margin-top: 12px; }
+  canvas.pad { width: 100%; height: 190px; border: 1px solid var(--line); border-radius: 10px; background: #fff; touch-action: none; cursor: crosshair; display: block; }
+
+  .btn { border: 1px solid var(--line); background: #fff; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; }
+  .btn:hover { background: var(--soft); }
+  .btn.primary { background: var(--brand); border-color: var(--brand); color: #fff; width: 100%; margin-top: 16px; padding: 11px; font-size: 15px; }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn:disabled { opacity: .55; cursor: not-allowed; }
+
+  /* ---------- results ---------- */
+  .empty { color: var(--muted); text-align: center; padding: 48px 12px; }
+  .empty b { display: block; color: var(--text); margin-bottom: 4px; }
+  .verdict { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 10px; margin-bottom: 14px; }
+  .verdict .badge { font-weight: 700; font-size: 14px; letter-spacing: .4px; padding: 5px 11px; border-radius: 6px; background: rgba(255,255,255,.7); }
+  .verdict .score { margin-left: auto; font-size: 28px; font-weight: 700; }
+  .verdict .score small { font-size: 13px; font-weight: 600; opacity: .75; }
+  .verdict .msg { font-size: 14px; }
+  .APPROVED { background: var(--ok-bg); color: var(--ok); }
+  .REVIEW { background: var(--warn-bg); color: var(--warn); }
+  .REJECTED { background: var(--bad-bg); color: var(--bad); }
+  .ERROR { background: var(--err-bg); color: var(--err); }
+  .note { font-size: 13px; padding: 9px 11px; border-radius: 8px; background: var(--warn-bg); color: var(--warn); margin-bottom: 12px; }
+
+  h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin: 18px 0 8px; }
+  table.kv { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.kv td { padding: 6px 4px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.kv td:first-child { color: var(--muted); width: 38%; }
+  table.cmp { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.cmp th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+  table.cmp td { padding: 6px 4px; border-bottom: 1px solid var(--line); vertical-align: top; word-break: break-word; }
+  .yes { color: var(--ok); font-weight: 600; } .no { color: var(--bad); font-weight: 600; }
+
+  .meters { display: grid; gap: 10px; }
+  .meter .lbl { display: flex; justify-content: space-between; font-size: 13px; }
+  .meter .track { height: 8px; background: var(--soft); border: 1px solid var(--line); border-radius: 99px; overflow: hidden; margin-top: 3px; }
+  .meter .fill { height: 100%; background: var(--brand); border-radius: 99px; }
+  .thresh { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  .imgs { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+  figure { margin: 0; }
+  figure img { width: 100%; border: 1px solid var(--line); border-radius: 8px; background: #fff; display: block; }
+  figcaption { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .legend { display: inline-flex; gap: 10px; }
+  .legend i { display: inline-block; width: 10px; height: 3px; vertical-align: middle; margin-right: 4px; }
+
+  details { margin-top: 16px; font-size: 13px; }
+  summary { cursor: pointer; color: var(--muted); }
+  pre { background: var(--soft); border: 1px solid var(--line); border-radius: 8px; padding: 10px; max-height: 340px; overflow: auto; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
+  .spinner { width: 18px; height: 18px; border: 2.5px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; display: inline-block; vertical-align: -4px; margin-right: 8px; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="logo">ID</div>
+    <div class="title">NIC &amp; Signature Verification</div>
+    <div class="chips" id="chips"><span class="chip">Checking engines…</span></div>
+    <div class="user">Signed in as <b>{{ user }}</b> <a href="{{ url_for('logout') }}">Sign out</a></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-nic" aria-controls="panel-nic" aria-selected="true">NIC verification</button>
+    <button class="tab" role="tab" id="tab-sig" aria-controls="panel-sig" aria-selected="false">Signature verification</button>
+  </div>
+
+  <!-- ===================== NIC ===================== -->
+  <section class="panel" id="panel-nic" role="tabpanel" aria-labelledby="tab-nic">
+    <div class="grid">
+      <form class="card" id="nic-form" novalidate>
+        <h2>Customer</h2>
+        <label class="f" for="nic-nic">NIC number</label>
+        <input type="text" id="nic-nic" name="nic" placeholder="e.g. 199012345678 or 901234567V" autocomplete="off" required>
+        <label class="f" for="nic-mobile">Mobile <span class="opt">(optional)</span></label>
+        <input type="tel" id="nic-mobile" name="mobile" placeholder="07XXXXXXXX" autocomplete="off">
+
+        <label class="f">Verify using</label>
+        <div class="seg" id="nic-mode">
+          <label><input type="radio" name="nic-mode" value="lime_repository" checked>
+            <span>LIME repository vs PRD<small>No image needed - uses the NIC copy stored in LIME</small></span></label>
+          <label><input type="radio" name="nic-mode" value="stored_lime">
+            <span>Upload NIC image - LIME + PRD<small>Compare an uploaded NIC photo with LIME and PRD</small></span></label>
+          <label><input type="radio" name="nic-mode" value="stored_prd">
+            <span>Upload NIC image - PRD only</span></label>
+          <label><input type="radio" name="nic-mode" value="camera_capture">
+            <span>Camera capture<small>LIME + PRD when a mobile number is given, otherwise PRD only</small></span></label>
+        </div>
+
+        <div class="drop" id="nic-upload" hidden>
+          <input type="file" id="nic-file" accept="image/*">
+          <img class="preview" id="nic-file-preview" alt="" hidden>
+        </div>
+        <div class="cam" id="nic-cam" hidden></div>
+
+        <button class="btn primary" type="submit" id="nic-submit">Verify NIC</button>
+      </form>
+
+      <div class="card" id="nic-result" aria-live="polite">
+        <div class="empty"><b>No result yet</b>Enter an NIC number, choose a source and press Verify NIC.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SIGNATURE ===================== -->
+  <section class="panel" id="panel-sig" role="tabpanel" aria-labelledby="tab-sig" hidden>
+    <div class="grid">
+      <form class="card" id="sig-form" novalidate>
+        <h2>Customer</h2>
+        <label class="f" for="sig-nic">NIC number</label>
+        <input type="text" id="sig-nic" name="nic" placeholder="e.g. 199012345678 or 901234567V" autocomplete="off" required>
+        <label class="f" for="sig-mobile">Mobile <span class="opt">(optional)</span></label>
+        <input type="tel" id="sig-mobile" name="mobile" placeholder="07XXXXXXXX" autocomplete="off">
+        <div class="hint">Compared with the SIGNATURE document stored in LIME for this NIC.</div>
+
+        <label class="f">Signature from</label>
+        <div class="seg row" id="sig-mode">
+          <label><input type="radio" name="sig-mode" value="upload" checked>Upload</label>
+          <label><input type="radio" name="sig-mode" value="draw">Draw</label>
+          <label><input type="radio" name="sig-mode" value="camera">Camera</label>
+        </div>
+
+        <div class="drop" id="sig-upload">
+          <input type="file" id="sig-file" accept="image/*">
+          <img class="preview" id="sig-file-preview" alt="" hidden>
+          <div class="hint">Photo or scan of the signature on plain paper.</div>
+        </div>
+        <div class="pad-wrap" id="sig-draw" hidden>
+          <canvas class="pad" id="sig-pad" aria-label="Signature pad"></canvas>
+          <div class="row-btns"><button type="button" class="btn" id="sig-clear">Clear</button>
+            <span class="hint" style="align-self:center">Sign with mouse, pen or finger.</span></div>
+        </div>
+        <div class="cam" id="sig-cam" hidden></div>
+
+        <button class="btn primary" type="submit" id="sig-submit">Verify signature</button>
+      </form>
+
+      <div class="card" id="sig-result" aria-live="polite">
+        <div class="empty"><b>No result yet</b>Enter an NIC number, provide the signature and press Verify signature.</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------------------------------------------------------------- helpers
+  const $ = (id) => document.getElementById(id);
+  function h(tag, attrs, ...kids) {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (v == null || v === false) continue;
+      if (k === "class") n.className = v; else if (k === "text") n.textContent = v; else n.setAttribute(k, v);
+    }
+    for (const k of kids.flat()) if (k != null && k !== false) n.append(k instanceof Node ? k : String(k));
+    return n;
+  }
+  const has = (v) => v !== null && v !== undefined && String(v).trim() !== "";
+  const num = (v, d = 1) => (typeof v === "number" && isFinite(v) ? v.toFixed(d) : "-");
+  const NIC_RE = /^(\d{9}[Vv]|\d{12})$/;
+  const STATUS_TEXT = { APPROVED: "APPROVED", REVIEW: "NEEDS REVIEW", REJECTED: "REJECTED", ERROR: "ERROR" };
+  const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+                  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+
+  function imgSrc(v) {
+    if (!has(v) || typeof v !== "string") return null;
+    if (v.startsWith("data:")) return v;
+    if (/^[A-Za-z0-9+/=\s]+$/.test(v.slice(0, 200))) return "data:image/jpeg;base64," + v.replace(/\s/g, "");
+    return null;
+  }
+
+  async function postForm(url, fd) {
+    const res = await fetch(url, { method: "POST", body: fd, credentials: "same-origin" });
+    const type = res.headers.get("content-type") || "";
+    if (!type.includes("application/json")) {
+      if (res.redirected || res.status === 401 || res.status === 302) { location.href = "{{ url_for('login') }}"; throw new Error("Session expired - please sign in again."); }
+      if (res.status === 413) throw new Error("Image is too large for the server's upload limit.");
+      throw new Error("Server returned an unexpected response (" + res.status + ").");
+    }
+    return res.json();
+  }
+
+  function busy(btn, on, label) {
+    btn.disabled = on;
+    btn.textContent = "";
+    if (on) btn.append(h("span", { class: "spinner" }), "Verifying…"); else btn.append(label);
+  }
+
+  function verdict(status, score, message) {
+    const s = STATUS_TEXT[status] ? status : "ERROR";
+    return h("div", { class: "verdict " + s },
+      h("div", {},
+        h("span", { class: "badge", text: STATUS_TEXT[s] }),
+        h("div", { class: "msg", text: message || "" })),
+      typeof score === "number" ? h("div", { class: "score" }, num(score), h("small", { text: "%" })) : null);
+  }
+
+  function kvTable(rows) {
+    const t = h("table", { class: "kv" });
+    rows.filter((r) => has(r[1])).forEach(([k, v]) => t.append(h("tr", {}, h("td", { text: k }), h("td", {}, v instanceof Node ? v : String(v)))));
+    return t.rows.length ? t : null;
+  }
+
+  function yesNo(v) {
+    if (v === true) return h("span", { class: "yes", text: "Match" });
+    if (v === false) return h("span", { class: "no", text: "Mismatch" });
+    return null;
+  }
+
+  function rawJson(data) {
+    const copy = JSON.parse(JSON.stringify(data, (k, v) =>
+      typeof v === "string" && v.length > 300 && /^(data:|[A-Za-z0-9+/=]{300})/.test(v) ? "[image " + v.length + " chars]" : v));
+    return h("details", {}, h("summary", { text: "Technical details" }), h("pre", { text: JSON.stringify(copy, null, 2) }));
+  }
+
+  function showError(box, msg, data) {
+    box.replaceChildren(verdict("ERROR", null, msg || "Verification failed"));
+    if (data) box.append(rawJson(data));
+  }
+
+  // ---------------------------------------------------------------- tabs
+  const tabs = [["nic", $("tab-nic"), $("panel-nic")], ["sig", $("tab-sig"), $("panel-sig")]];
+  function selectTab(name) {
+    tabs.forEach(([n, tab, panel]) => {
+      const on = n === name;
+      tab.setAttribute("aria-selected", on ? "true" : "false");
+      panel.hidden = !on;
+    });
+    if (name !== "nic") nicCam.stop();
+    if (name !== "sig") sigCam.stop();
+    if (name === "sig") pad.resize();
+    store.set("activeTab", name);
+  }
+  tabs.forEach(([n, tab]) => tab.addEventListener("click", () => selectTab(n)));
+
+  // Carry NIC / mobile across tabs when the other tab's field is still empty.
+  [["nic-nic", "sig-nic"], ["nic-mobile", "sig-mobile"]].forEach(([a, b]) => {
+    const A = $(a), B = $(b);
+    A.addEventListener("change", () => { if (!B.value) B.value = A.value; });
+    B.addEventListener("change", () => { if (!A.value) A.value = B.value; });
+  });
+
+  // ---------------------------------------------------------------- status chips
+  fetch("{{ url_for('api_status') }}", { credentials: "same-origin" })
+    .then((r) => r.json())
+    .then((s) => {
+      const chips = $("chips"); chips.replaceChildren();
+      [["Face AI", s.face_agent], ["Face detector", s.live_detector]].forEach(([name, st]) => {
+        if (!st) return;
+        chips.append(h("span", { class: "chip " + (st.available ? "on" : "off"), title: st.label || "",
+          text: name + ": " + (st.available ? "ready" : "unavailable") }));
+      });
+    })
+    .catch(() => { $("chips").replaceChildren(h("span", { class: "chip off", text: "Engine status unavailable" })); });
+
+  // ---------------------------------------------------------------- camera
+  function Camera(host, opts) {
+    let stream = null, shot = null;
+    const video = h("video", { autoplay: "", playsinline: "", muted: "" });
+    const img = h("img", { alt: "Captured image" });
+    const startBtn = h("button", { type: "button", class: "btn", text: "Start camera" });
+    const snapBtn = h("button", { type: "button", class: "btn", text: "Capture" });
+    const retakeBtn = h("button", { type: "button", class: "btn", text: "Retake" });
+    const msg = h("div", { class: "hint", text: opts.hint || "" });
+    host.append(video, img, h("div", { class: "row-btns" }, startBtn, snapBtn, retakeBtn), msg);
+
+    function render() {
+      video.hidden = !stream || !!shot; img.hidden = !shot;
+      startBtn.hidden = !!stream || !!shot; snapBtn.hidden = !stream || !!shot; retakeBtn.hidden = !shot;
+    }
+    async function start() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        msg.textContent = "Camera needs HTTPS (or localhost) and a supported browser."; return;
+      }
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+        video.srcObject = stream; msg.textContent = opts.hint || ""; render();
+      } catch (e) { msg.textContent = "Could not open the camera: " + (e.message || e.name); }
+    }
+    function stop() { if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; } render(); }
+    function snap() {
+      const c = document.createElement("canvas");
+      c.width = video.videoWidth; c.height = video.videoHeight;
+      if (!c.width) { msg.textContent = "Camera not ready yet - try again."; return; }
+      c.getContext("2d").drawImage(video, 0, 0);
+      shot = c.toDataURL("image/jpeg", 0.92); img.src = shot; stop();
+    }
+    startBtn.onclick = start; snapBtn.onclick = snap;
+    retakeBtn.onclick = () => { shot = null; start(); };
+    render();
+    return { get: () => shot, stop, reset() { shot = null; stop(); } };
+  }
+  const nicCam = Camera($("nic-cam"), { hint: "Hold the NIC card flat, fill the frame, avoid glare." });
+  const sigCam = Camera($("sig-cam"), { hint: "Signature on plain paper, good light, fill most of the frame." });
+
+  // ---------------------------------------------------------------- file previews
+  function previewFile(input, img) {
+    input.addEventListener("change", () => {
+      const f = input.files && input.files[0];
+      if (!f) { img.hidden = true; img.removeAttribute("src"); return; }
+      img.src = URL.createObjectURL(f); img.hidden = false;
+    });
+  }
+  previewFile($("nic-file"), $("nic-file-preview"));
+  previewFile($("sig-file"), $("sig-file-preview"));
+
+  // ---------------------------------------------------------------- signature pad
+  const pad = (function (canvas) {
+    const ctx = canvas.getContext("2d");
+    let drawing = false, last = null, dirty = false, snapshot = null;
+    function resize() {
+      const r = canvas.getBoundingClientRect(); if (!r.width) return;
+      if (dirty) snapshot = canvas.toDataURL();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, r.width, r.height);
+      ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = "#111"; ctx.lineWidth = 2.6;
+      if (snapshot) { const im = new Image(); im.onload = () => ctx.drawImage(im, 0, 0, r.width, r.height); im.src = snapshot; }
+    }
+    function pos(e) { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+    canvas.addEventListener("pointerdown", (e) => { drawing = true; last = pos(e); canvas.setPointerCapture(e.pointerId);
+      ctx.beginPath(); ctx.arc(last.x, last.y, 1.2, 0, Math.PI * 2); ctx.fillStyle = "#111"; ctx.fill(); dirty = true; });
+    canvas.addEventListener("pointermove", (e) => { if (!drawing) return; const p = pos(e);
+      ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(p.x, p.y); ctx.stroke(); last = p; dirty = true; });
+    ["pointerup", "pointercancel", "pointerleave"].forEach((ev) => canvas.addEventListener(ev, () => { drawing = false; }));
+    window.addEventListener("resize", () => { if (!canvas.closest("[hidden]")) resize(); });
+    return { resize, clear() { dirty = false; snapshot = null; resize(); }, isEmpty: () => !dirty, toDataURL: () => canvas.toDataURL("image/png") };
+  })($("sig-pad"));
+  $("sig-clear").addEventListener("click", () => pad.clear());
+
+  // ---------------------------------------------------------------- mode switches
+  function radioValue(name) { const r = document.querySelector('input[name="' + name + '"]:checked'); return r ? r.value : null; }
+
+  function syncNicMode() {
+    const m = radioValue("nic-mode");
+    $("nic-upload").hidden = !(m === "stored_lime" || m === "stored_prd");
+    $("nic-cam").hidden = m !== "camera_capture";
+    if (m !== "camera_capture") nicCam.stop();
+    store.set("nicMode", m);
+  }
+  function syncSigMode() {
+    const m = radioValue("sig-mode");
+    $("sig-upload").hidden = m !== "upload";
+    $("sig-draw").hidden = m !== "draw";
+    $("sig-cam").hidden = m !== "camera";
+    if (m !== "camera") sigCam.stop();
+    if (m === "draw") pad.resize();
+    store.set("sigMode", m);
+  }
+  document.querySelectorAll('input[name="nic-mode"]').forEach((r) => r.addEventListener("change", syncNicMode));
+  document.querySelectorAll('input[name="sig-mode"]').forEach((r) => r.addEventListener("change", syncSigMode));
+
+  function restoreRadio(name, value) {
+    const r = value && document.querySelector('input[name="' + name + '"][value="' + value + '"]');
+    if (r) r.checked = true;
+  }
+  restoreRadio("nic-mode", store.get("nicMode"));
+  restoreRadio("sig-mode", store.get("sigMode"));
+
+  // ---------------------------------------------------------------- validation
+  function checkCustomer(nicId, mobileId) {
+    const nic = $(nicId).value.trim(), mobile = $(mobileId).value.trim();
+    if (!NIC_RE.test(nic)) return { error: "Enter a valid NIC number: 9 digits followed by V, or 12 digits." };
+    if (mobile && !/^(0\d{9}|\d{10}|\+94\d{9})$/.test(mobile)) return { error: "Mobile should look like 07XXXXXXXX or +947XXXXXXXX." };
+    return { nic, mobile };
+  }
+
+  // ---------------------------------------------------------------- NIC submit
+  $("nic-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const box = $("nic-result"), btn = $("nic-submit");
+    const c = checkCustomer("nic-nic", "nic-mobile");
+    if (c.error) return showError(box, c.error);
+
+    const mode = radioValue("nic-mode");
+    const fd = new FormData();
+    fd.append("mode", mode); fd.append("nic", c.nic); if (c.mobile) fd.append("mobile", c.mobile);
+    if (mode === "stored_lime" || mode === "stored_prd") {
+      const f = $("nic-file").files[0];
+      if (!f) return showError(box, "Choose a NIC image to upload.");
+      fd.append("image", f);
+    } else if (mode === "camera_capture") {
+      const shot = nicCam.get();
+      if (!shot) return showError(box, "Start the camera and capture the NIC first.");
+      fd.append("image_data", shot);
+    }
+
+    busy(btn, true);
+    box.replaceChildren(h("div", { class: "empty", text: "Checking LIME and PRD…" }));
+    try {
+      const data = await postForm("{{ url_for('api_verify') }}", fd);
+      renderNic(box, data);
+    } catch (err) { showError(box, err.message); }
+    finally { busy(btn, false, "Verify NIC"); }
+  });
+
+  function renderNic(box, d) {
+    if (!d.success) return showError(box, d.error || d.final_message || "Verification failed", d);
+    const prd = d.prd_data || {};
+    box.replaceChildren(verdict(d.final_status, d.final_score, d.final_message));
+
+    if (d.mobile_match === false) box.append(h("div", { class: "note", text: "Mobile " + (d.mobile_provided || "") + " does not match LIME's mobile for this NIC (" + (d.lime_mobile || "-") + ")." }));
+    if (d.face_error) box.append(h("div", { class: "note", text: "Face engine: " + d.face_error }));
+
+    const face = kvTable([
+      ["Face match", typeof d.face_match === "boolean" ? yesNo(d.face_match) : null],
+      ["Face similarity", typeof d.face_similarity === "number" ? num(d.face_similarity) + "%" : null],
+      ["Face model", d.face_model],
+      ["Image source", d.image_source],
+    ]);
+    if (face) box.append(h("h3", { text: "Photo comparison" }), face);
+
+    const fields = d.data_comparison && d.data_comparison.fields;
+    if (fields && Object.keys(fields).length) {
+      const t = h("table", { class: "cmp" }, h("tr", {}, ["Field", "LIME", "PRD", "Score", ""].map((x) => h("th", { text: x }))));
+      Object.entries(fields).forEach(([k, f]) => t.append(h("tr", {},
+        h("td", { text: k.replace(/_/g, " ").toUpperCase() }), h("td", { text: f.lime_value || "-" }), h("td", { text: f.prd_value || "-" }),
+        h("td", { text: typeof f.score === "number" ? num(f.score, 0) + "%" : "-" }),
+        h("td", {}, f.lime_value && f.prd_value ? yesNo(!!f.match) : h("span", { class: "hint", text: "n/a" })))));
+      box.append(h("h3", { text: "LIME vs PRD details" + (typeof d.data_comparison.overall_score === "number" ? " - " + num(d.data_comparison.overall_score, 0) + "%" : "") }), t);
+    }
+
+    const person = kvTable([
+      ["Name (PRD)", prd.name], ["Name (LIME)", d.lime_name], ["Address (PRD)", prd.address], ["Address (LIME)", d.lime_address],
+      ["NIC (PRD)", prd.nic], ["NIC (LIME)", d.lime_nic], ["Date of birth", prd.dob], ["Gender", prd.gender],
+      ["NIC issue date", prd.issue_date], ["NIC status", prd.nic_status], ["Phone (PRD)", prd.phone],
+      ["Mobile (LIME)", d.lime_mobile], ["LIME document", d.lime_doc_type],
+    ]);
+    if (person) box.append(h("h3", { text: "Customer" }), person);
+
+    const photo = imgSrc(prd.photograph_image);
+    if (photo) box.append(h("h3", { text: "PRD photograph" }), h("div", { class: "imgs" }, h("figure", {}, h("img", { src: photo, alt: "PRD photograph" }))));
+
+    box.append(rawJson(d));
+  }
+
+  // ---------------------------------------------------------------- signature submit
+  $("sig-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const box = $("sig-result"), btn = $("sig-submit");
+    const c = checkCustomer("sig-nic", "sig-mobile");
+    if (c.error) return showError(box, c.error);
+
+    const how = radioValue("sig-mode");
+    const fd = new FormData();
+    fd.append("nic", c.nic); if (c.mobile) fd.append("mobile", c.mobile);
+    let previewUrl = null;
+    if (how === "upload") {
+      const f = $("sig-file").files[0];
+      if (!f) return showError(box, "Choose a signature image to upload.");
+      fd.append("mode", "upload"); fd.append("signature", f); previewUrl = $("sig-file-preview").src;
+    } else if (how === "draw") {
+      if (pad.isEmpty()) return showError(box, "Draw the signature on the pad first.");
+      previewUrl = pad.toDataURL(); fd.append("mode", "capture"); fd.append("signature_data", previewUrl);
+    } else {
+      const shot = sigCam.get();
+      if (!shot) return showError(box, "Start the camera and capture the signature first.");
+      previewUrl = shot; fd.append("mode", "capture"); fd.append("signature_data", shot);
+    }
+
+    busy(btn, true);
+    box.replaceChildren(h("div", { class: "empty", text: "Fetching the LIME signature and comparing…" }));
+    try {
+      const data = await postForm("{{ url_for('api_verify_signature') }}", fd);
+      renderSig(box, data, previewUrl);
+    } catch (err) { showError(box, err.message); }
+    finally { busy(btn, false, "Verify signature"); }
+  });
+
+  const METHOD_LABELS = { closeness: "Stroke closeness", coverage: "Stroke coverage", shape_context: "Shape similarity" };
+
+  function renderSig(box, d, previewUrl) {
+    if (!d.success) return showError(box, d.error || "Signature verification failed", d);
+    const sc = d.signature_comparison || {};
+    box.replaceChildren(verdict(d.final_status, d.final_score, d.final_message));
+
+    if (sc.rotation_search_hit_boundary) box.append(h("div", { class: "note", text: "The two signatures are rotated a lot relative to each other - check the overlay." }));
+
+    const ms = sc.method_scores || {};
+    const meters = h("div", { class: "meters" });
+    Object.keys(METHOD_LABELS).forEach((k) => {
+      if (typeof ms[k] !== "number") return;
+      const pct = Math.max(0, Math.min(100, ms[k]));
+      meters.append(h("div", { class: "meter" },
+        h("div", { class: "lbl" }, h("span", { text: METHOD_LABELS[k] }), h("b", { text: num(ms[k]) + "%" })),
+        h("div", { class: "track" }, h("div", { class: "fill", style: "width:" + pct + "%" }))));
+    });
+    if (meters.children.length) {
+      box.append(h("h3", { text: "Score breakdown" }), meters);
+      const extra = [];
+      if (typeof ms.rotation_degrees === "number") extra.push("rotation " + num(ms.rotation_degrees) + "°");
+      if (typeof ms.stretch_slant === "number") extra.push("stretch/slant " + num(ms.stretch_slant, 2));
+      if (sc.thresholds) extra.push("approve ≥ " + sc.thresholds.approve + ", review ≥ " + sc.thresholds.review);
+      if (extra.length) box.append(h("div", { class: "thresh", text: extra.join(" · ") }));
+    }
+
+    const b64 = sc.base64ai;
+    if (b64 && (b64.available || (b64.error && !/not configured/i.test(b64.error)))) {
+      box.append(h("h3", { text: "Base64.ai" }), kvTable([
+        ["Result", b64.matched === true ? yesNo(true) : b64.matched === false ? yesNo(false) : "Inconclusive"],
+        ["Message", b64.message], ["Error", b64.error],
+      ]));
+    }
+
+    const figs = [];
+    if (previewUrl) figs.push(h("figure", {}, h("img", { src: previewUrl, alt: "Submitted signature" }), h("figcaption", { text: "Submitted signature" })));
+    if (sc.overlay_image) figs.push(h("figure", {}, h("img", { src: sc.overlay_image, alt: "Alignment overlay" }),
+      h("figcaption", {}, h("span", { class: "legend" },
+        h("span", {}, h("i", { style: "background:#282828" }), "LIME"),
+        h("span", {}, h("i", { style: "background:#145ac8" }), "Submitted")))));
+    if (figs.length) box.append(h("h3", { text: "Images" }), h("div", { class: "imgs" }, figs));
+
+    const info = kvTable([
+      ["Name (LIME)", d.lime_name], ["NIC (LIME)", d.lime_nic], ["LIME document", d.lime_doc_type],
+      ["Mobile (LIME)", d.lime_mobile], ["Mobile check", typeof d.mobile_match === "boolean" ? yesNo(d.mobile_match) : null],
+    ]);
+    if (info) box.append(h("h3", { text: "Customer" }), info);
+
+    box.append(rawJson(d));
+  }
+
+  // ---------------------------------------------------------------- init
+  syncNicMode(); syncSigMode();
+  selectTab(store.get("activeTab") === "sig" ? "sig" : "nic");
+})();
+</script>
+</body>
+</html>

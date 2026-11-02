@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in - NIC &amp; Signature Verification</title>
+<style>
+  :root {
+    --bg: #f3f5f8; --card: #ffffff; --text: #1b2430; --muted: #5d6b7c;
+    --line: #dde3ea; --brand: #1f4e8c; --brand-ink: #ffffff; --danger: #b42318; --danger-bg: #fdecea;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px;
+    background: var(--bg); color: var(--text);
+    font: 15px/1.5 "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  }
+  .card {
+    width: 100%; max-width: 380px; background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 28px 26px; box-shadow: 0 6px 24px rgba(20, 40, 70, .07);
+  }
+  .mark { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .mark .logo {
+    width: 36px; height: 36px; border-radius: 9px; background: var(--brand); color: var(--brand-ink);
+    display: grid; place-items: center; font-weight: 700; font-size: 14px; letter-spacing: .5px;
+  }
+  h1 { font-size: 18px; margin: 0; }
+  .sub { color: var(--muted); font-size: 13px; margin: 0; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 6px; }
+  input {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px;
+    font: inherit; background: #fff; color: var(--text);
+  }
+  input:focus { outline: 2px solid rgba(31, 78, 140, .25); border-color: var(--brand); }
+  .btn {
+    width: 100%; margin-top: 20px; padding: 11px; border: 0; border-radius: 8px; cursor: pointer;
+    background: var(--brand); color: var(--brand-ink); font: inherit; font-weight: 600;
+  }
+  .btn.alt { background: #fff; color: var(--text); border: 1px solid var(--line); margin-top: 10px;
+    display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
+  .error { background: var(--danger-bg); color: var(--danger); border-radius: 8px; padding: 10px 12px; font-size: 14px; margin-bottom: 6px; }
+  .or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; margin: 18px 0 0; }
+  .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .ms { width: 16px; height: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+  .ms i { display: block; } .ms i:nth-child(1){background:#f25022} .ms i:nth-child(2){background:#7fba00}
+  .ms i:nth-child(3){background:#00a4ef} .ms i:nth-child(4){background:#ffb900}
+</style>
+</head>
+<body>
+  <main class="card">
+    <div class="mark">
+      <div class="logo">ID</div>
+      <div>
+        <h1>NIC &amp; Signature Verification</h1>
+        <p class="sub">Sign in to continue</p>
+      </div>
+    </div>
+
+    {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
+
+    <form method="post" autocomplete="on">
+      <label for="username">Username</label>
+      <input id="username" name="username" required autofocus autocomplete="username">
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" required autocomplete="current-password">
+      <button class="btn" type="submit">Sign in</button>
+    </form>
+
+    {% if sso_enabled %}
+      <div class="or">or</div>
+      <a class="btn alt" href="{{ url_for('login_microsoft', next=request.args.get('next')) }}">
+        <span class="ms"><i></i><i></i><i></i><i></i></span> Sign in with Microsoft
+      </a>
+    {% endif %}
+  </main>
+</body>
+</html>
